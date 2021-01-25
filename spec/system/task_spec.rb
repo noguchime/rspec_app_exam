@@ -2,7 +2,7 @@ require 'rails_helper'
 
 RSpec.describe 'Task', type: :system do
   let(:project) { create(:project) }
-  let(:task) { create(:task, project: project) }
+  let(:task) { create(:task) } #factories/tasks.rbにassociationを追加したことによりproject: projectを省略
   
   describe 'Task一覧' do
     context '正常系' do
@@ -68,8 +68,10 @@ RSpec.describe 'Task', type: :system do
         fill_in 'Deadline', with: Time.current
         click_button 'Update Task'
         click_link 'Back'
-        # 空うめは_を使う https://docs.ruby-lang.org/ja/latest/class/Time.html#S_LOCAL
-        expect(find('.task_list')).to have_content(Time.current.strftime('%_m/%d %H:%M'))
+        # https://docs.ruby-lang.org/ja/latest/method/Time/i/strftime.html instance method Time#strftime
+        # expect(find('.task_list')).to have_content(Time.current.strftime('-%m-%d %H:%M'))
+        # view側(tasks/index.html.rb)のメソッドと合わせるため、rails_helperにapplication_helperをincludeしてshort_timeメソッドを使えるようにする
+        expect(find('.task_list')).to have_content short_time(Time.current)
         expect(current_path).to eq project_tasks_path(project)
       end
 
@@ -86,7 +88,7 @@ RSpec.describe 'Task', type: :system do
       it '既にステータスが完了のタスクのステータスを変更した場合、Taskの完了日が更新されないこと' do
         # TODO: FactoryBotのtraitを利用してください
         # traitを使用したオーバーライド
-        create(:task, :task_finished_status)
+        create(:task, :done)
         visit edit_project_task_path(project, task)
         select 'todo', from: 'Status'
         click_button 'Update Task'
@@ -105,7 +107,7 @@ RSpec.describe 'Task', type: :system do
         # click_link 'Destroy'
         # page.driver.browser.switch_to.alert.accept #alartをaccept
         accept_alert { click_link 'Destroy' } #alartをaccept
-        expect(find '.task_list').not_to have_content task.title #.task_listの中にtask.titleが入ってないことを確認。以下のexpectもこの指定が適応される
+        expect(find '.task_list').not_to have_content task.title
         expect(Task.count).to eq 0
         expect(current_path).to eq project_tasks_path(project)
       end
